@@ -5,7 +5,7 @@ on:
     branches: [ "main" ]
 
 jobs:
-  # --- JOB 1: PRUEBAS ---
+  # --- ETAPA 1: PRUEBAS (CI) ---
   test:
     runs-on: ubuntu-latest
     steps:
@@ -15,13 +15,13 @@ jobs:
     - name: Configurar PHP
       uses: shivammathur/setup-php@v2
       with:
-        php-version: '8.4' # Versión corregida
+        php-version: '8.4' # Usamos 8.4 para compatibilidad
         extensions: mbstring, xml, bcmath, sqlite3
 
     - name: Instalar Dependencias
       run: composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
 
-    - name: Copiar archivo .env
+    - name: Copiar .env
       run: cp .env.example .env
 
     - name: Generar Key
@@ -38,9 +38,9 @@ jobs:
         DB_DATABASE: database/database.sqlite
       run: php artisan test
 
-  # --- JOB 2: CONSTRUIR Y SUBIR ---
+  # --- ETAPA 2: CONSTRUIR Y SUBIR (Build & Push) ---
   build:
-    needs: test # Solo arranca si las pruebas pasan
+    needs: test # Solo se ejecuta si las pruebas pasan
     runs-on: ubuntu-latest
     steps:
       - name: Descargar código
@@ -53,7 +53,7 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Construir Imagen Docker
-        # Esto usará tu usuario 'eliasruizancao' automáticamente desde los secretos
+        # Usa tu usuario automáticamente desde los secretos
         run: docker build -t ${{ secrets.DOCKER_USERNAME }}/api-laravel:latest .
 
       - name: Escaneo de Seguridad (Trivy)
@@ -61,7 +61,7 @@ jobs:
         with:
           image-ref: '${{ secrets.DOCKER_USERNAME }}/api-laravel:latest'
           format: 'table'
-          [cite_start]exit-code: '1' # Falla si hay vulnerabilidades críticas [cite: 31, 32]
+          exit-code: '1' # Falla si hay vulnerabilidades críticas
           ignore-unfixed: true
           severity: 'CRITICAL,HIGH'
 
