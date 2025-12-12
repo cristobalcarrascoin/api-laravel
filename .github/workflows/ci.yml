@@ -67,3 +67,33 @@ jobs:
 
       - name: Subir a Docker Hub
         run: docker push ${{ secrets.DOCKER_USERNAME }}/api-laravel:latest
+
+  # --- ETAPA 3: DESPLIEGUE AUTOMÁTICO (CD) ---
+  deploy:
+    name: "🚀 Desplegar en VM con Ansible"
+    needs: build  # Solo se ejecuta si build pasa
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'  # Solo en main
+    
+    steps:
+      - name: 📥 Descargar repositorio de infraestructura
+        uses: actions/checkout@v4
+        with:
+          repository: EliasRuizAncao/infraestructura-laravel-proyecto
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: infra
+
+      - name: 🔧 Instalar Ansible
+        run: sudo apt-get update && sudo apt-get install -y ansible
+
+      - name: 🔑 Configurar acceso SSH a la VM
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VM_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.VM_HOST }} >> ~/.ssh/known_hosts
+
+      - name: 🚀 Ejecutar Playbook de Ansible
+        run: |
+          cd infra
+          ansible-playbook -i "${{ secrets.VM_HOST }}," -u ${{ secrets.VM_USER }} deploy.yml
